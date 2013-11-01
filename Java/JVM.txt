@@ -1,0 +1,11 @@
+JVM = 2가지 메모리 관리 영역	(Java Heap space, Permenant Generation)
+	- Heap은 메모리 프로그램이 실행중에 생성&삭제됨(Garbage-collected)
+	- Permenant는 프로그램 생성여부와 관계없이 계속해서 잡혀 있는 영역이다.(Class Names, Internalized string, objects)
+
+이클립스에서는 .ini에서 수정하면 영역을 줄이거나 늘일 수 있다.
+
+ex-기존)javaw -vmargs -Xverify:none -XX:+UseParallelGC -XX:PermSize=20M -XX:MaxNewSize=32M -XX:NewSize=32M -Xmx512M
+
+ex-변경후)javaw -vmargs -Xverify:none -XX:+UseParallelGC -XX:PermSize=64M -XX:MaxPermSize=128M -XX:MaxNewSize=32M -XX:NewSize=32M -Xmx512M 
+
+출처 및 인용 : http://mainia.tistory.com/171
