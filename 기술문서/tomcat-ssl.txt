@@ -1,0 +1,94 @@
+참고사이트 : http://www.sysnet.pe.kr/2/0/1132
+http://devhome.tistory.com/64
+http://itscom.org/archives/1618
+https://www.securesign.kr/guides/Tomcat-SSL-Certificate-Install
+http://ddoraisiki.tistory.com/143
+
+tomcat manual : https://tomcat.apache.org/tomcat-8.0-doc/ssl-howto.html#Configuration
+
+openssl : https://www.openssl.org/source/
+
+- 자바 start
+keytool -genkey -alias tomcat -keyalg RSA
+
+keytool -list
+
+keytool -delete -alias tomcat
+- 자바 end
+
+openssl 사용하여 ssl 인증서 적용함
+
+cd /usr/local/openssl
+
+openssl genrsa -des3 1024 > key.pem
+
+openssl req -new -key key.pem > csr.pem
+
+입력
+KR
+Seoul
+Seoul
+Funzin
+Solution
+funzin
+starcx@naver.com
+funzin
+funzin
+입력 완료
+
+openssl req -key key.pem -x509 -nodes -sha1 -days 365 -in csr.pem -out funzin.pem
+
+openssl pkcs12 -export -in funzin.pem -inkey key.pem -out .keystore -name funzin
+
+입력
+funzin
+funzin
+funzin
+입력완료
+
+톰캣에 추가
+vi /usr/local/tomcat/conf/server.xml
+<Listener className="org.apache.catalina.core.AprLifecycleListener" SSLEngine="off" /> <-- 변경
+<Connector port="443" maxThreads="100"
+     schema="https" secure="true" SSLEnabled="true"
+     keystoreFile="/root/.keystore" keystorePass="funzin" keystoreType="pkcs12"
+     clientAuth="false" sslProtocal="TLS" />
+
+방화벽에 포트 추가
+vi /etc/sysconfig/iptables
+
+입력
+-A RH-Firewall-1-INPUT -p tcp -m state --state NEW -m tcp --dport 8443 -j ACCEPT
+입력완료
+
+/etc/init.d/iptables restart
+
+접속하면 됨
+
+리다이렉트 추가
+참고사이트 : https://tadpoledbhub.atlassian.net/wiki/pages/viewpage.action?pageId=18382851
+http://tkurek.blogspot.kr/2013/07/tomcat-7-http-to-https-redirect.html
+
+vi server.xml
+<Connector ~
+     enableLookups="false"   <-- 추가
+/>
+
+vi web.xml
+
+</web-app> 끝나는 태그 직전에 아래의 마크업을 붙여넣습니다.
+<security-constraint>
+  <web-resource-collection>
+    <web-resource-name>Protected Context</web-resource-name>
+    <url-pattern>/*</url-pattern>
+  </web-resource-collection>
+  <!-- auth-constraint goes here if you requre authentication -->
+  <user-data-constraint>
+    <transport-guarantee>CONFIDENTIAL</transport-guarantee>
+  </user-data-constraint>
+</security-constraint>
+
+완료
+
+
+
