@@ -1,0 +1,178 @@
+2016-07-20 수요일 작업
+
+차장님 참고사이트 : http://wiki.zmanda.com/index.php/How_to_Backup
+https://mariadb.com/sites/default/files/ZmandaBackupRecoveryDatasheetCover.pdf
+https://opentutorials.org/course/196/1355
+
+참고사이트 : http://byseob.blogspot.kr/2010/08/crontab%EA%B3%BC-%EC%89%98%EC%8A%A4%ED%81%AC%EB%A6%BD%ED%8A%B8%EB%A5%BC-%EC%9D%B4%EC%9A%A9%ED%95%9C-db%EB%B0%B1%EC%97%85%EC%97%85.html
+https://www.linux.co.kr/home/lecture/index.php?cateNo=&secNo=&theNo=&leccode=11046
+
+리눅스 반복 예약작업 cron, crond, crontab
+참고사이트 : http://zetawiki.com/wiki/%EB%A6%AC%EB%88%85%EC%8A%A4_%EB%B0%98%EB%B3%B5_%EC%98%88%EC%95%BD%EC%9E%91%EC%97%85_cron,_crond,_crontab
+
+리눅스 shell date format
+참고사이트 : http://www.cyberciti.biz/faq/linux-unix-formatting-dates-for-display/
+
+crontab -e : 수동으로 등록
+
+예시[편집]
+* * * * * /root/every_1min.sh
+
+→ 매 1분마다 /root/every_1min.sh 를 수행 (하루에 1440회[2])
+15,45 * * * * /root/every_30min.sh
+
+→ 매시 15분, 45분에 /root/every_30min.sh 를 수행 (하루에 48회[3])
+*/10 * * * * /root/every_10min.sh
+
+→ 10분마다 /root/every_10min.sh 를 수행 (하루에 144회[4])
+0 2 * * * /root/backup.sh
+
+→ 매일 02:00에/root/backup.sh 를 수행 (하루에 1회)
+30 */6 * * * /root/every_6hours.sh
+
+→ 매 6시간마다 수행(00:30, 06:30, 12:30, 18:30)
+30 1-23/6 * * * /root/every_6hours.sh
+
+→ 1시부터 매 6시간마다 수행(01:30, 07:30, 13:30, 19:30)
+0 8 * * 1-5 /root/weekday.sh
+
+→ 평일(월요일~금요일) 08:00
+0 8 * * 0,6 /root/weekend.sh
+
+→ 주말(일요일, 토요일) 08:00
+
+/etc/init.d/crond restart : crontab 재시작
+
+파일생성 shell script
+
+vim /root/every_1min.sh
+
+var1="Hello"
+var2="World!"
+logwrite="$var1 $var2"
+echo "$logwrite" >> /usr/local/backup_mysql/mysql_db_bak_$(date +%Y%m%d%H%M%S).sql
+
+wq!
+
+자동으로 저장
+
+DB 백업 Shell Script
+
+/usr/local/mysql/bin/mysqldump -u gems mysql > /usr/local/backup_mysql/sql/mysql_db_back_test.sql
+
+/usr/bin/mysqldump -u root -p rapam2m User2 > /usr/local/backup_mysql/sql/mysql_db_back_user2.sql
+
+mysql -u root -p rapam2m_test < mysql_db_back_user2.sql
+
+Zmanda Recovery Manager(ZMR)
+
+http://www.zmanda.com/download-zrm.php
+
+mkdir /usr/local/zmanda
+
+wget http://www.zmanda.com/downloads/community/ZRM-MySQL/3.0/RPM/MySQL-zrm-3.0-1.noarch.rpm
+
+wget http://www.zmanda.com/downloads/community/ZRM-MySQL/3.0/RPM/MySQL-zrm-client-3.0-1.noarch.rpm
+
+rpm -i MySQL-zrm-3.0-1.noarch.rpm
+
+/usr/bin
+find -name *-zrm-*
+-rwxr-x--- 1 mysql mysql  1807 2013-08-27 05:45 mysql-zrm-abort-backup
+-rwxr-x--- 1 mysql mysql 76654 2013-08-27 05:45 mysql-zrm-backup
+-rwxr-x--- 1 mysql mysql  1579 2013-08-27 05:45 mysql-zrm-check
+-rwxr-x--- 1 mysql mysql  2925 2013-08-27 05:45 mysql-zrm-extract-backup
+-rwxr-x--- 1 mysql mysql  1796 2013-08-27 05:45 mysql-zrm-getconf
+-rwxr-x--- 1 mysql mysql  4454 2013-08-27 05:45 mysql-zrm-list
+-rwxr-x--- 1 mysql mysql 12184 2013-08-27 05:45 mysql-zrm-manage-backup
+-rwxr-x--- 1 mysql mysql  2683 2013-08-27 05:45 mysql-zrm-migrate-file-ownership
+-rwxr-x--- 1 mysql mysql 12584 2013-08-27 05:45 mysql-zrm-parse-binlogs
+-rwxr-x--- 1 mysql mysql  4983 2013-08-27 05:45 mysql-zrm-purge
+-rwxr-x--- 1 mysql mysql 29113 2013-08-27 05:45 mysql-zrm-reporter
+-rwxr-x--- 1 mysql mysql 34678 2013-08-27 05:45 mysql-zrm-restore
+-rwxr-x--- 1 mysql mysql 12920 2013-08-27 05:45 mysql-zrm-scheduler
+-rwxr-x--- 1 mysql mysql  8240 2013-08-27 05:45 mysql-zrm-verify-backup
+
+/etc/mysql-zrm/
+RSS.header  mysql-zrm-release  mysql-zrm-reporter.conf  mysql-zrm.conf
+
+vim mysql-zrm.con
+
+#0은 전체, 1은 증분백업
+backup-level=1
+
+#증분백업을 하려면 바이너리 로그의 경로를 지정해야 한다.
+mysql-binlog-path="/var/log/mysql"
+
+#백업을 한 데이터를 언제까지 보관할 건지 정하는 것
+retention-policy=10D
+
+# 압축을 할건지에 대해 정하는 것
+compress=1
+
+#전체 백업을 하겠다는 것
+all-databases=1
+
+#특정 스키마만 저장을 하겠다는 것
+#databases=wikidb forums
+
+#테이블별로 저장을 하겠다는 것
+#database="wikidb"
+
+#백업을 실행하는 아이디 지정
+user="root"
+
+#백업을 실행하는 패스워드 지정
+password="fun1234"
+
+#백업할 때마다 메일을 받을 수 있다.
+mailto="starcx@naver.com"
+
+백업실행
+mysql-zrm-scheduler --now --backup-set common
+
+백업진행사항 보기
+mysql-zrm-reporter
+
+백업저장된 결과
+cd /var/lib/mysql-zrm/common/날짜
+
+백업설정파일
+vim /var/lib/mysql-zrm/common/날짜/index
+
+mysql 로그 경로보기
+mysql -u root -p
+show binary logs;
+find -name mysql-bin.*
+
+./var/lib/mysql/mysql-bin.000001
+
+스케줄러 등록
+mysql-zrm-scheduler --add --interval daily --start 00:00 --backup-set common : 등록
+mysql-zrm-scheduler --delete --interval daily --start 00:00 : 삭제
+
+dayly, weekly, monthly
+daily --start 00:00
+weekly --day-of-week 2-3
+monthly --day-of-month 10
+
+스케줄러 확인
+crontab -e
+mysql-zrm-scheduler --query
+
+증분복원확인
+mysqlbinlog mysql-bin.xxxxxx
+mysqlbinlog mysql-bin.xxxxxx | grep end_log_pos
+mysqlbinlog mysql-bin.xxxxxx | grep -B 4 end_log_pos : 앞으로 4줄 더 보여주기
+mysqlbinlog mysql-bin.xxxxxx | grep -B 4 -A 4 end_log_pos : 앞으로 4줄 더 보여주기 + 뒤로 4줄 더 보여주기
+
+전체복원
+mysql-zrm --action restore --backup-set common --source-direcotry /var/lib/mysql-zrm/common/xxxxxxxxxxxxxxx
+
+증분복원
+mysql-zrm --action restore --backup-set common --source-direcotry /var/lib/mysql-zrm/common/xxxxxxxxxxxxxxx --stop-position=xxx
+mysql-zrm --action restore --backup-set common --source-direcotry /var/lib/mysql-zrm/common/xxxxxxxxxxxxxxx --start-position=xxx
+
+mysql-zrm --action restore --backup-set common --source-direcotry --bin-logs /var/lib/mysql-zrm/common/xxxxxxxxxxxxxxx/mysql-bin.xxxxxxx.bin --stop-position=xxx
+
+
