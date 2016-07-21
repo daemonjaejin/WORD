@@ -1,0 +1,76 @@
+MANUAL
+참고사이트 : http://wiki.zmanda.com/index.php/Zmanda_Recovery_Manager_for_MySQL_Users_Manual
+http://wiki.zmanda.com/index.php/MySQL_Backup_and_Recovery
+https://opentutorials.org/course/196/1354
+
+ZMANDA 설치
+http://www.zmanda.com/download-zrm.php
+wget http://www.zmanda.com/downloads/community/ZRM-MySQL/2.2/RPM/MySQL-zrm-2.2.0-1.noarch.rpm
+rpm -ivh MySQL-zrm-2.2.0-1.noarch.rpm
+/etc/mysql-zrm
+mkdir /etc/mysql-zrm/임의디렉토리폴더명
+cp /etc/mysql-zrm/mysql-zrm.conf /etc/mysql-zrm/임의디렉토리폴더명
+
+ZMANDA 설정
+vim /etc/mysql-zrm/임의디렉토리폴더명/mysql-zrm.conf
+backup-level=0|1 : 0은 전체백업, 1은 증분백업
+backkup-mode=raw|logical : raw은 설정파일 있음,logical은 설정파일 없음
+retention-policy=1D|1W|1M : D는 일, W는 주, M은 월(유효기간)
+compress=0|1 : 0은 압축 안함, 1은 압축
+all-databases=1 : 전체 백업
+databases=movie : database명
+tables=movie : 테이블명
+user="backup-user"
+password="fun1234"
+mysql-binlog-path="/var/lib/mysql"
+mailto="starcx@naver.com"
+
+계정생성
+mysql -uroot -pfun1234
+grant select, insert, update, create, drop, reload, shutdown, alter, super, lock tables, replication client on *.* to 'backup-user'@'%' identified by 'fun1234';
+show grants for 'backup-user'@'%';
+
+create database movie;
+use movie;
+CREATE TABLE `movie` (
+  `id` int(11) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+INSERT INTO movie. `movie` VALUES (0, '죽은 시인의 사회');
+INSERT INTO movie. `movie` VALUES (1, '쇼생크탈출');
+INSERT INTO movie. `movie` VALUES (3, '매트릭스');
+INSERT INTO movie. `movie` VALUES (4, '공각기동대');
+
+Test 진행
+전체백업
+mysql-zrm-scheduler --now --backup-set full-backup
+백업진행보기
+mysql-zrm-reporter --show restore-info
+삭제
+DROP DATABASE `movie`;
+전체복구
+mysql-zrm --action restore --backup-set full-backup --source-directory /var/lib/mysql-zrm/full-backup/20160721112343
+데이터넣기
+INSERT INTO movie.`movie` VALUES (5, '보물섬');
+INSERT INTO movie.`movie` VALUES (6, '개구리왕자');
+INSERT INTO movie.`movie` VALUES (7, '엄지공주');
+COMMIT;
+증분백업
+mysql-zrm-scheduler --now --backup-set increment-backup
+백업진행보기
+mysql-zrm-reporter --show restore-info
+전체복구
+mysql-zrm --action restore --backup-set full-backup --source-directory /var/lib/mysql-zrm/full-backup/20160721112343
+증분복구
+mysql-zrm --action restore --backup-set increment-backup --source-directory /var/lib/mysql-zrm/increment-backup/20160721103527
+증분복구로그보기
+mysql-zrm --action parse-binlogs --backup-set increment-backup --source-directory /var/lib/mysql-zrm/increment-backup/20160721103527 --output-format=text | grep insert
+특정부분복구 - 마지막 것만 복구 - 지정된 행부터 적용
+mysql-zrm --action restore --backup-set increment-backup --source-directory /var/lib/mysql-zrm/increment-backup/20160721103527 --start-position 784
+특정부분복구 - 처음것만 복구 - 지정된 행 이전까지 적용
+mysql-zrm --action restore --backup-set increment-backup --source-directory /var/lib/mysql-zrm/increment-backup/20160721103527 --stop-position 613
+
+스케줄 설정
+mysql-zrm-scheduler --add --interval daily --start 00:00 --backup-set common : 등록
+mysql-zrm-scheduler --delete --interval daily --start 00:00 : 삭제
