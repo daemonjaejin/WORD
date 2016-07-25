@@ -1,0 +1,98 @@
+SSL - 특정 페이지 적용
+
+	1. /login https 적용
+	2. loginSuccess 후, 
+	3. 구글에서 redirect https to http java 검색해서 적용
+
+
+ex1)
+if (request.isSecure()) { // it is HTTPS
+    String reqUrl = req.getRequestURL().toString().replaceFirst("https:", "http:");
+    String queryString = req.getQueryString();
+    if (queryString != null)
+        reqUrl += '?' + queryString;
+    response.sendRedirect(reqUrl);
+}
+
+ex2)
+public class MyFilter implements Filter {
+    private FilterConfig conf;
+
+    public void doFilter(ServletRequest request, ServletResponse response,
+            FilterChain chain) throws IOException, ServletException {
+        HttpServletRequest req = (HttpServletRequest)request;
+        HttpServletResponse resp = (HttpServletResponse)response;
+        if (req.getRemoteUser() != null && req.getScheme().equals("http")) {
+            String url = "https://" + req.getServerName()
+                    + req.getContextPath() + req.getServletPath();
+            if (req.getPathInfo() != null) {
+                url += req.getPathInfo();
+            }
+            resp.sendRedirect(url);
+        } else {
+            chain.doFilter(request, response);
+        }
+    }
+
+    public FilterConfig getFilterConfig() {
+        return conf;
+    }
+
+    public void setFilterConfig(FilterConfig filterConfig) {
+        conf = filterConfig;
+    }
+
+    public void destroy() {       
+    }
+
+    public void init(FilterConfig filterConfig) {
+        conf = filterConfig;
+    }
+}
+
+ex3)
+public class MyFilter implements Filter {
+    private FilterConfig conf;
+
+    public void doFilter(ServletRequest request, ServletResponse response,
+            FilterChain chain) throws IOException, ServletException {
+        HttpServletRequest req = (HttpServletRequest)request;
+        HttpServletResponse resp = (HttpServletResponse)response;
+        if (req.getRemoteUser() != null && req.getScheme().equals("http")) {
+            String url = "https://" + req.getServerName()
+                    + req.getContextPath() + req.getServletPath();
+            if (req.getPathInfo() != null) {
+                url += req.getPathInfo();
+            }
+            resp.sendRedirect(url);
+        } else {
+            chain.doFilter(request, response);
+        }
+    }
+
+    public FilterConfig getFilterConfig() {
+        return conf;
+    }
+
+    public void setFilterConfig(FilterConfig filterConfig) {
+        conf = filterConfig;
+    }
+
+    public void destroy() {       
+    }
+
+    public void init(FilterConfig filterConfig) {
+        conf = filterConfig;
+    }
+}
+
+ex3)
+
+
+
+
+
+
+
+
+
