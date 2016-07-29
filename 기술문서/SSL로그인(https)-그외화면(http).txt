@@ -1,0 +1,350 @@
+방법 1.
+
+pom.xml
+
+2.5에서는 setHttpOnly가 없음
+3.0 이상으로 버전을 올려준다.
+
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+            <version>3.0.1</version>
+        </dependency>
+
+securityContext.xml
+
+<?xml version="1.0" encoding="UTF-8"?>
+<beans:beans xmlns="http://www.springframework.org/schema/security"
+    xmlns:beans="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:p="http://www.springframework.org/schema/p"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.2.xsd
+    http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security-3.2.xsd">
+
+    <http auto-config="false" use-expressions="true" entry-point-ref="authenticationEntryPoint">
+
+        <port-mappings>
+            <port-mapping http="80" https="443"/>
+            <port-mapping http="8080" https="8443"/>
+            <port-mapping http="18080" https="18081"/>
+            <port-mapping http="19090" https="19091"/>
+        </port-mappings>
+
+        <!-- For Using HTTPS To HTTP Redirect -->
+        <custom-filter position="FIRST" ref="httpsCookieFilter" />
+
+        <access-denied-handler error-page="/denied" />
+        <custom-filter position="FORM_LOGIN_FILTER" ref="formLoginFilter" />
+        <intercept-url pattern="/" access="permitAll" />
+        <intercept-url pattern="/main" access="permitAll" requires-channel="http"/>
+        <intercept-url pattern="/login" access="permitAll" />
+        <intercept-url pattern="/denied" access="permitAll" />
+        <intercept-url pattern="/authfail" access="permitAll" />
+
+        <intercept-url pattern="/user/insertUserPopView" access="permitAll" />
+        <intercept-url pattern="/user/selectUserInfo" access="permitAll" />
+        <intercept-url pattern="/user/joinProc" access="permitAll" />
+        <intercept-url pattern="/user/insertUserInfoProc" access="permitAll" />
+        <intercept-url pattern="/user/listUserInfo" access="permitAll" />
+        <intercept-url pattern="/env_mng/selectAreaList" access="permitAll" />
+        <intercept-url pattern="/user/listUser" access="permitAll" />
+        <intercept-url pattern="/user/updatetUserPop" access="permitAll" />
+        <intercept-url pattern="/user/passwordPopView" access="permitAll" />
+        <intercept-url pattern="/user/passwordChange" access="permitAll" />
+        <intercept-url pattern="/user/deleteUserPop" access="permitAll" />
+
+        <intercept-url pattern="/page404" access="permitAll" />
+        <intercept-url pattern="/page500" access="permitAll" />
+        <intercept-url pattern="/common/**/*" access="permitAll" />
+        <intercept-url pattern="/resources/**/*" access="permitAll" />
+
+        <intercept-url pattern="/*" access="hasAnyRole('ROLE_ADMIN','ROLE_USER','ROLE_GUEST')" />
+        <intercept-url pattern="/**/*" access="hasAnyRole('ROLE_ADMIN','ROLE_USER','ROLE_GUEST')" />
+
+        <logout invalidate-session="true" logout-url="/logout" success-handler-ref="logoutSuccessHandler"/>
+    </http>
+
+    <!-- For Using HTTPS To HTTP Redirect -->
+    <beans:bean name="httpsCookieFilter" class="kr.co.funzin.gems.security.HttpsCookieFilter"/>
+
+    <beans:bean id="sessionDestoryListener" class="kr.co.funzin.gems.security.SessionDestoryListener" />
+
+    <beans:bean id="authenticationEntryPoint" class="kr.co.funzin.gems.security.LoginUrlAuthenticationEntryPoint">
+        <beans:constructor-arg name="loginFormUrl" value="/login" />
+        <beans:property name="ajaxLoginFormUrl" value="/authfail" />
+    </beans:bean>
+    <beans:bean id="successHandler" class="kr.co.funzin.gems.security.CustomUserLoginSuccessHandler">
+        <beans:property name="defaultTargetUrl" value="/main"/>
+    </beans:bean>
+
+    <beans:bean id="failureHandler" class="org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler">
+        <beans:property name="defaultFailureUrl" value="/?login_error=failure" />
+    </beans:bean>
+
+    <beans:bean id="logoutSuccessHandler" class="org.springframework.security.web.authentication.logout.SimpleUrlLogoutSuccessHandler">
+        <!-- <beans:property name="defaultTargetUrl" value="/home"/> -->
+    </beans:bean>
+
+    <beans:bean id="sessionFixationProtectionStrategy" class="org.springframework.security.web.authentication.session.SessionFixationProtectionStrategy">
+        <beans:property name="migrateSessionAttributes" value="true" />
+    </beans:bean>
+
+    <beans:bean id="formLoginFilter" class="org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter">
+        <beans:property name="authenticationManager" ref="authenticationManager"></beans:property>
+        <beans:property name="usernameParameter" value="id"/>
+        <beans:property name="passwordParameter" value="pswd"/>
+        <beans:property name="filterProcessesUrl" value="/loginProcess" />
+        <beans:property name="authenticationSuccessHandler" ref="successHandler"/>
+        <beans:property name="authenticationFailureHandler" ref="failureHandler"/>
+        <beans:property name="sessionAuthenticationStrategy" ref="sessionFixationProtectionStrategy" />
+        <beans:property name="postOnly" value="true" />
+    </beans:bean>
+
+    <beans:bean id="userDetailsService" class="kr.co.funzin.gems.security.UserDetailServiceImpl"/>
+
+    <beans:bean id="passwordEncoder" class="org.springframework.security.authentication.encoding.ShaPasswordEncoder">
+        <beans:constructor-arg value="512"/>
+    </beans:bean>
+
+    <beans:bean id="daoAuthenticationProvider" class="org.springframework.security.authentication.dao.DaoAuthenticationProvider">
+        <beans:property name="passwordEncoder" ref="passwordEncoder" />
+        <beans:property name="userDetailsService" ref="userDetailsService" />
+        <beans:property name="hideUserNotFoundExceptions" value="false"/>
+    </beans:bean>
+
+     <beans:bean id="authenticationManager" class="org.springframework.security.authentication.ProviderManager">
+        <beans:constructor-arg name="providers">
+            <beans:list>
+                <beans:ref bean="daoAuthenticationProvider" />
+            </beans:list>
+        </beans:constructor-arg>
+    </beans:bean>
+
+    <authentication-manager/>
+</beans:beans>
+
+방법 2.
+
+HttpsCookieFilter.java
+
+package kr.co.funzin.gems.security;
+
+import java.io.IOException;
+
+import javax.servlet.Filter;
+import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+
+import org.apache.log4j.Logger;
+
+public class HttpsCookieFilter implements Filter {
+
+    private static Logger logger = Logger.getLogger(HttpsCookieFilter.class);
+    private String sessionId = "JSESSIONID";
+
+    @Override
+    public void init(FilterConfig arg0) throws ServletException {
+        if (logger.isTraceEnabled()) {
+            logger.trace("[HttpsCookieFilter] initialized.");
+        }
+    }
+
+    @Override
+    public void destroy() {
+        if (logger.isTraceEnabled()) {
+            logger.trace("[HttpsCookieFilter] destoryed.");
+        }
+    }
+
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public void setSessionId(String sessionId) {
+        this.sessionId = sessionId;
+    }
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
+
+        HttpServletRequest httpRequest = (HttpServletRequest) request;
+        HttpServletResponse httpResponse = (HttpServletResponse) response;
+        if (httpRequest.isSecure()) {
+            HttpSession session = httpRequest.getSession(false);
+            if (session != null) {
+                Cookie sessionCookie = new Cookie(sessionId, session.getId());
+
+                sessionCookie.setMaxAge(-1);
+                sessionCookie.setSecure(false);
+                sessionCookie.setHttpOnly(true);
+                //path 명시일 때는 제대로 동작 안함
+//                sessionCookie.setPath("".equals(httpRequest.getContextPath()) ? "" : httpRequest.getContextPath());
+
+                httpResponse.addCookie(sessionCookie);
+            }
+        }
+        chain.doFilter(request, response);
+    }
+
+}
+
+방법 2.
+
+CustomUserLoginSuccessHandler.java
+
+package kr.co.funzin.gems.security;
+
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Enumeration;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+
+import org.joda.time.DateTime;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
+
+import kr.co.funzin.gems.common.GlobalVarBean;
+import kr.co.funzin.gems.domain.UserLoginHistory;
+import kr.co.funzin.gems.management.dao.UserLoginHistoryDao;
+
+public class CustomUserLoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler{
+    @Autowired
+    private LoginDao loginDao;
+    @Autowired
+    private UserLoginHistoryDao loginHistoryDao;
+
+    @Autowired
+    private GlobalVarBean globalVar; 
+
+    @Value("#{config['user.maxConnect']}")
+    private int maxConnect;
+
+    private static final String localRemoteAddressV4 = "127.0.0.1";
+
+    private static final String localRemoteAddressV6 = "0:0:0:0:0:0:0:1";
+
+    @Override
+    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
+            Authentication authentication) throws IOException, ServletException {
+
+            if (request.isSecure()) { // it is HTTPS
+                Cookie nCookie = new Cookie("JSESSIONID", request.getSession().getId());
+                response.setHeader("SET-COOKIE", "JSESSIONID=" + request.getSession().getId() +"; HttpOnly");
+                nCookie.setPath(request.getContextPath());
+                response.addCookie(nCookie);
+            }
+
+            Date curDate = DateTime.now().toDate();
+            CustomUserDetails  userDetail = (CustomUserDetails)authentication.getPrincipal();
+            HttpSession session = request.getSession();
+
+            String clientIp = getRealClientIpAddress(request);
+            //System.out.println("============================> ipAddress : " + clientIp);
+
+            // 사용자 로그인 정보를 저장한다.
+            UserLoginHistory userLoginHistory  = new UserLoginHistory();
+            userLoginHistory.setUserId(userDetail.getUser().getUserId());
+            userLoginHistory.setInsDateTime(curDate);
+            //userLoginHistory.setIpAddress(request.getRemoteAddr());
+            userLoginHistory.setIpAddress(clientIp);
+            userLoginHistory.setType((byte)0);
+            userLoginHistory.setPwdChangeDateTime(curDate);
+            userLoginHistory.setPwdExpirationDateTime(curDate);
+            userLoginHistory.setSessionId(session.getId());
+            int result = loginHistoryDao.insertUserHistory(userLoginHistory);
+
+            super.onAuthenticationSuccess(request, response, authentication);
+
+
+            SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+
+            //System.out.println("============================> session.getId() : "+session.getId());
+
+            ++GlobalVarBean.userCnt;
+
+//            System.out.println("======================= Session In!!!!!!!! ========================");
+//            System.out.println("GlobalVarBean.userCnt : "+GlobalVarBean.userCnt);
+//            globalVar.setLoginCnt(globalVar.getLoginCnt()+1);
+
+            session.setAttribute("loginTime", format.format(curDate));
+            session.setAttribute("maxConnect", maxConnect);
+            session.setAttribute("userCnt", GlobalVarBean.userCnt);
+    }
+
+    private String getRealClientIpAddress(HttpServletRequest request) {
+        NetworkInterface iface = null;
+        String ipAddress = request.getRemoteAddr();
+        if(!ipAddress.equals(localRemoteAddressV6)) {
+            return ipAddress;
+        }
+
+        try {
+            for (Enumeration ifaces = NetworkInterface.getNetworkInterfaces(); ifaces.hasMoreElements();) {
+                iface = (NetworkInterface) ifaces.nextElement();
+                InetAddress ia = null;
+
+                for (Enumeration ips = iface.getInetAddresses(); ips.hasMoreElements();) {
+                    ia = (InetAddress) ips.nextElement();
+                    String address = ia.getHostAddress();
+                    if (localRemoteAddressV4.compareTo(address) != 0) {
+                        if(!ia.isLoopbackAddress() && ia.isSiteLocalAddress() && !ia.isAnyLocalAddress()) {
+                            ipAddress = address;
+                        }
+                    }
+                }
+            }
+        } catch (SocketException e) {
+            e.printStackTrace();
+        }
+
+        return ipAddress;
+    }
+
+}
+
+
+MainContoroller.java
+
+@RequestMapping(value = "/main", method = RequestMethod.GET)
+    public String home(Locale locale, Model model, Authentication authentication, HttpSession session, HttpServletRequest request, HttpServletResponse response) throws IOException{
+
+        if (request.isSecure()) { // it is HTTPS
+            String reqUrl = request.getRequestURL().toString().replaceFirst("https:", "http:");
+            // 75 server
+            if(reqUrl.indexOf(configProperty.getWebSslPort()) > -1){
+                reqUrl = reqUrl.replace(configProperty.getWebSslPort(), configProperty.getWebPort());
+            }
+            String queryString = request.getQueryString();
+            if (queryString != null)
+                reqUrl += '?' + queryString;
+            response.sendRedirect(reqUrl);
+        }
+
+....
+
+}
+
+
+
+
+
+
